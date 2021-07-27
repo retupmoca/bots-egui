@@ -1,4 +1,5 @@
 use eframe::{epi, egui};
+use eframe::egui::emath::{vec2, Vec2, Rot2, pos2, Pos2};
 use eframe::egui::epaint::{Mesh, Color32, Vertex, TextureId, Shape};
 
 struct App {
@@ -14,6 +15,7 @@ impl Default for App {
         }
     }
 }
+
 
 impl epi::App for App {
     fn name(&self) -> &str { "Bots" }
@@ -47,32 +49,50 @@ impl epi::App for App {
 
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            let mut mesh = Mesh::with_texture(self.body_tex);
-            mesh.vertices.push(Vertex {
-                pos: egui::pos2(0f32, 0f32),
-                uv: egui::pos2(1f32, 1f32),
-                color: Color32::WHITE
-            });
-            mesh.vertices.push(Vertex {
-                pos: egui::pos2(960f32, 0f32),
-                uv: egui::pos2(0f32, 1f32),
-                color: Color32::RED
-            });
-            mesh.vertices.push(Vertex {
-                pos: egui::pos2(0f32, 540f32),
-                uv: egui::pos2(1f32, 0f32),
-                color: Color32::YELLOW
-            });
-            mesh.add_triangle(0, 1, 2);
-
-            mesh.vertices.push(Vertex {
-                pos: egui::pos2(960f32, 540f32),
-                uv: egui::pos2(0f32, 0f32),
-                color: Color32::BLUE
-            });
-            mesh.add_triangle(1, 2, 3);
-            ui.painter().add(Shape::Mesh(mesh));
+            self.render_tank(ui.painter(), 300f32, 300f32);
         });
+    }
+}
+
+impl App {
+    fn render_tank(&self, painter: &egui::Painter, x: f32, y: f32) {
+        let position = pos2(x, y);
+        let rotation_body = Rot2::from_angle(-1f32) * 0.5f32;
+        let rotation_turret = Rot2::from_angle(1f32) * 0.5f32;
+
+        let mut mesh = Mesh::with_texture(self.body_tex);
+        Self::add_tank_vertices(&mut mesh, rotation_body, position);
+        painter.add(Shape::Mesh(mesh));
+
+        let mut mesh = Mesh::with_texture(self.turret_tex);
+        Self::add_tank_vertices(&mut mesh, rotation_turret, position);
+        painter.add(Shape::Mesh(mesh));
+    }
+
+    fn add_tank_vertices(mesh: &mut Mesh, rot: Rot2, pos: Pos2) {
+        mesh.vertices.push(Vertex {
+            pos: pos + (rot * vec2(-480f32, -205f32)),
+            uv: egui::pos2(0f32, 0f32),
+            color: Color32::WHITE
+        });
+        mesh.vertices.push(Vertex {
+            pos: pos + (rot * vec2(480f32, -205f32)),
+            uv: egui::pos2(1f32, 0f32),
+            color: Color32::WHITE
+        });
+        mesh.vertices.push(Vertex {
+            pos: pos + (rot * vec2(-480f32, 335f32)),
+            uv: egui::pos2(0f32, 1f32),
+            color: Color32::WHITE
+        });
+        mesh.add_triangle(0, 1, 2);
+
+        mesh.vertices.push(Vertex {
+            pos: pos + (rot * vec2(480f32, 335f32)),
+            uv: egui::pos2(1f32, 1f32),
+            color: Color32::WHITE
+        });
+        mesh.add_triangle(1, 2, 3);
     }
 }
 
