@@ -1,5 +1,5 @@
 [package]
-name = "egui-ui"
+name = "bots-egui"
 version = "0.1.0"
 authors = ["Andrew <andrew@egeler.us>"]
 edition = "2018"
