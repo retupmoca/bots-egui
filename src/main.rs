@@ -8,6 +8,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::mpsc::{sync_channel, SyncSender, Receiver};
 use std::f32::consts::PI;
+use std::time::{Duration, Instant};
 
 struct BotPosition {
     x: i32,
@@ -35,7 +36,22 @@ fn bots_main_loop(tx: SyncSender<WorldUpdate>, redraw: Arc<dyn epi::RepaintSigna
 
     std::thread::sleep(std::time::Duration::from_secs(5));
 
+    let mut tp1 = Instant::now();
+    let mut tp2 = tp1.clone();
+    let mut accumulated: isize = 0;
+    let target: isize = 1000 / 60;
     loop {
+        tp2 = Instant::now();
+        let elapsed = tp2 - tp1;
+        tp1 = tp2.clone();
+
+        accumulated -= elapsed.as_millis() as isize;
+        accumulated += target;
+
+        if accumulated > 0 {
+            std::thread::sleep(Duration::from_millis(accumulated as u64));
+        }
+
         world.tick();
         send_world_update(&tx, &world);
         redraw.as_ref().request_repaint();
