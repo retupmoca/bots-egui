@@ -7,12 +7,17 @@ use bots::{World, WorldConfig};
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::mpsc::{sync_channel, SyncSender, Receiver};
+use std::f32::consts::PI;
+
+struct BotPosition {
+    x: i32,
+    y: i32,
+    heading: u32,
+    turret_offset: u32,
+}
 
 struct WorldUpdate {
-    bota_x: i32,
-    bota_y: i32,
-    botb_x: i32,
-    botb_y: i32,
+    bots: Vec<BotPosition>,
 }
 
 fn bots_main_loop(tx: SyncSender<WorldUpdate>, redraw: Arc<dyn epi::RepaintSignal>) {
@@ -38,13 +43,18 @@ fn bots_main_loop(tx: SyncSender<WorldUpdate>, redraw: Arc<dyn epi::RepaintSigna
 }
 
 fn send_world_update(tx: &SyncSender<WorldUpdate>, world: &World) {
-    let tank_a = world.bots[0].tank_mut();
-    let tank_b = world.bots[1].tank_mut();
+    let mut bot_positions: Vec<BotPosition> = Vec::new();
+    for bot in &world.bots {
+        let tank = bot.tank_mut();
+        bot_positions.push(BotPosition {
+            x: tank.x,
+            y: tank.y,
+            heading: tank.heading,
+            turret_offset: tank.turret_offset
+        });
+    }
     tx.send(WorldUpdate {
-        bota_x: tank_a.x,
-        bota_y: tank_a.y,
-        botb_x: tank_b.x,
-        botb_y: tank_b.y,
+        bots: bot_positions
     }).unwrap();
 }
 
@@ -117,8 +127,15 @@ impl epi::App for App {
         egui::CentralPanel::default().show(ctx, |ui| {
             match &self.botpos {
                 Some(update) => {
-                    self.render_tank(ui.painter(), self.map_world_coord(update.bota_x), self.map_world_coord(update.bota_y));
-                    self.render_tank(ui.painter(), self.map_world_coord(update.botb_x), self.map_world_coord(update.botb_y));
+                    for tank in &update.bots {
+                        self.render_tank(
+                            ui.painter(),
+                            self.map_world_coord(tank.x),
+                            self.map_world_coord(tank.y),
+                            -1f32 * (tank.heading as f32 * PI / 512f32),
+                            -1f32 * (tank.turret_offset as f32 * PI / 512f32),
+                        );
+                    }
                 },
                 _ => {},
             }
@@ -127,10 +144,10 @@ impl epi::App for App {
 }
 
 impl App {
-    fn render_tank(&self, painter: &egui::Painter, x: f32, y: f32) {
+    fn render_tank(&self, painter: &egui::Painter, x: f32, y: f32, tank_angle: f32, turret_angle: f32) {
         let position = pos2(x, y);
-        let rotation_body = Rot2::from_angle(-1f32) * 0.5f32;
-        let rotation_turret = Rot2::from_angle(1f32) * 0.5f32;
+        let rotation_body = Rot2::from_angle(tank_angle) * 0.1f32;
+        let rotation_turret = Rot2::from_angle(tank_angle + turret_angle) * 0.1f32;
 
         let mut mesh = Mesh::with_texture(self.body_tex);
         Self::add_tank_vertices(&mut mesh, rotation_body, position);
