@@ -2,9 +2,57 @@ use eframe::{epi, egui};
 use eframe::egui::emath::{vec2, Vec2, Rot2, pos2, Pos2};
 use eframe::egui::epaint::{Mesh, Color32, Vertex, TextureId, Shape};
 
+use bots::{World, WorldConfig};
+
+use std::path::Path;
+use std::sync::Arc;
+use std::sync::mpsc::{sync_channel, SyncSender, Receiver};
+
+struct WorldUpdate {
+    bota_x: i32,
+    bota_y: i32,
+    botb_x: i32,
+    botb_y: i32,
+}
+
+fn bots_main_loop(tx: SyncSender<WorldUpdate>, redraw: Arc<dyn epi::RepaintSignal>) {
+    let mut world = World::new(WorldConfig {
+        cpus_per_tick: 1,
+        ..WorldConfig::default()
+    });
+
+    world.add_bot(Path::new("testbot.bc"));
+    world.add_bot(Path::new("testbot.bc"));
+
+    world.place_bots();
+
+    send_world_update(&tx, &world);
+
+    std::thread::sleep(std::time::Duration::from_secs(5));
+
+    loop {
+        world.tick();
+        send_world_update(&tx, &world);
+        redraw.as_ref().request_repaint();
+    }
+}
+
+fn send_world_update(tx: &SyncSender<WorldUpdate>, world: &World) {
+    let tank_a = world.bots[0].tank_mut();
+    let tank_b = world.bots[1].tank_mut();
+    tx.send(WorldUpdate {
+        bota_x: tank_a.x,
+        bota_y: tank_a.y,
+        botb_x: tank_b.x,
+        botb_y: tank_b.y,
+    }).unwrap();
+}
+
 struct App {
     body_tex: TextureId,
-    turret_tex: TextureId
+    turret_tex: TextureId,
+    rx: Option<Receiver<WorldUpdate>>,
+    botpos: Option<WorldUpdate>
 }
 
 impl Default for App {
@@ -12,10 +60,11 @@ impl Default for App {
         Self {
             body_tex: TextureId::default(),
             turret_tex: TextureId::default(),
+            rx: None,
+            botpos: None,
         }
     }
 }
-
 
 impl epi::App for App {
     fn name(&self) -> &str { "Bots" }
@@ -45,11 +94,34 @@ impl epi::App for App {
             (turret_dimensions.0 as usize, turret_dimensions.1 as usize),
             &turret_pixels
         );
+
+        let (tx, rx) = sync_channel(8);
+        self.rx = Some(rx);
+        let trigger_redraw = frame.repaint_signal().clone();
+
+        std::thread::spawn(move || {
+            bots_main_loop(tx, trigger_redraw);
+        });
+
+        println!("ready");
     }
 
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame) {
+        match self.rx.as_ref().unwrap().try_recv() {
+            Ok(update) => {
+                self.botpos = Some(update);
+            },
+            _ => {},
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.render_tank(ui.painter(), 300f32, 300f32);
+            match &self.botpos {
+                Some(update) => {
+                    self.render_tank(ui.painter(), self.map_world_coord(update.bota_x), self.map_world_coord(update.bota_y));
+                    self.render_tank(ui.painter(), self.map_world_coord(update.botb_x), self.map_world_coord(update.botb_y));
+                },
+                _ => {},
+            }
         });
     }
 }
@@ -93,6 +165,10 @@ impl App {
             color: Color32::WHITE
         });
         mesh.add_triangle(1, 2, 3);
+    }
+
+    fn map_world_coord(&self, x: i32) -> f32 {
+        x as f32 / 8f32 + 500f32
     }
 }
 
