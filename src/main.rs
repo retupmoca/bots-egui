@@ -17,8 +17,15 @@ struct BotPosition {
     turret_offset: u32,
 }
 
+struct ShotPosition {
+    x: i32,
+    y: i32,
+    heading: u32,
+}
+
 struct WorldUpdate {
     bots: Vec<BotPosition>,
+    shots: Vec<ShotPosition>,
 }
 
 fn bots_main_loop(tx: SyncSender<WorldUpdate>, redraw: Arc<dyn epi::RepaintSignal>) {
@@ -69,8 +76,19 @@ fn send_world_update(tx: &SyncSender<WorldUpdate>, world: &World) {
             turret_offset: tank.turret_offset
         });
     }
+
+    let mut shot_positions: Vec<ShotPosition> = Vec::new();
+    for shot in world.shots.borrow().iter() {
+        shot_positions.push(ShotPosition {
+            x: shot.x,
+            y: shot.y,
+            heading: shot.heading
+        });
+    }
+
     tx.send(WorldUpdate {
-        bots: bot_positions
+        bots: bot_positions,
+        shots: shot_positions
     }).unwrap();
 }
 
@@ -152,6 +170,15 @@ impl epi::App for App {
                             -1f32 * (tank.turret_offset as f32 * PI / 512f32),
                         );
                     }
+
+                    for shot in &update.shots {
+                        self.render_shot(
+                            ui.painter(),
+                            self.map_world_coord(shot.x),
+                            self.map_world_coord(shot.y),
+                            -1f32 * (shot.heading as f32 * PI / 512f32),
+                        );
+                    }
                 },
                 _ => {},
             }
@@ -172,6 +199,14 @@ impl App {
         let mut mesh = Mesh::with_texture(self.turret_tex);
         Self::add_tank_vertices(&mut mesh, rotation_turret, position);
         painter.add(Shape::Mesh(mesh));
+    }
+
+    fn render_shot(&self, painter: &egui::Painter, x: f32, y: f32, angle: f32) {
+        let position = pos2(x, y);
+        let rotation = Rot2::from_angle(angle);
+
+        let line = Shape::line_segment([position, position + (rotation * vec2(0f32, -8f32))], (2f32, Color32::WHITE));
+        painter.add(line);
     }
 
     fn add_tank_vertices(mesh: &mut Mesh, rot: Rot2, pos: Pos2) {
