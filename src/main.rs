@@ -189,8 +189,8 @@ impl epi::App for App {
 impl App {
     fn render_tank(&self, painter: &egui::Painter, x: f32, y: f32, tank_angle: f32, turret_angle: f32) {
         let position = pos2(x, y);
-        let rotation_body = Rot2::from_angle(tank_angle) * 0.1f32;
-        let rotation_turret = Rot2::from_angle(tank_angle + turret_angle) * 0.1f32;
+        let rotation_body = Rot2::from_angle(tank_angle) * 0.05f32;
+        let rotation_turret = Rot2::from_angle(tank_angle + turret_angle) * 0.05f32;
 
         let mut mesh = Mesh::with_texture(self.body_tex);
         Self::add_tank_vertices(&mut mesh, rotation_body, position);
