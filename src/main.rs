@@ -161,15 +161,24 @@ impl epi::App for App {
         egui::CentralPanel::default().show(ctx, |ui| {
             match &self.botpos {
                 Some(update) => {
-                    for tank in &update.bots {
-                        self.render_tank(
-                            ui.painter(),
-                            self.map_world_coord(tank.x),
-                            self.map_world_coord(tank.y),
-                            -1f32 * (tank.heading as f32 * PI / 512f32),
-                            -1f32 * (tank.turret_offset as f32 * PI / 512f32),
-                        );
-                    }
+                    self.render_tank(
+                        ui.painter(),
+                        Color32::RED,
+                        self.map_world_coord(update.bots[0].x),
+                        self.map_world_coord(update.bots[0].y),
+                        -1f32 * (update.bots[0].heading as f32 * PI / 512f32),
+                        -1f32 * (update.bots[0].turret_offset as f32 * PI / 512f32),
+                    );
+                    self.render_tank(
+                        ui.painter(),
+                        Color32::BLUE,
+                        self.map_world_coord(update.bots[1].x),
+                        self.map_world_coord(update.bots[1].y),
+                        -1f32 * (update.bots[1].heading as f32 * PI / 512f32),
+                        -1f32 * (update.bots[1].turret_offset as f32 * PI / 512f32),
+                    );
+                    //for tank in &update.bots {
+                    //}
 
                     for shot in &update.shots {
                         self.render_shot(
@@ -187,17 +196,17 @@ impl epi::App for App {
 }
 
 impl App {
-    fn render_tank(&self, painter: &egui::Painter, x: f32, y: f32, tank_angle: f32, turret_angle: f32) {
+    fn render_tank(&self, painter: &egui::Painter, color: Color32, x: f32, y: f32, tank_angle: f32, turret_angle: f32) {
         let position = pos2(x, y);
         let rotation_body = Rot2::from_angle(tank_angle) * 0.05f32;
         let rotation_turret = Rot2::from_angle(tank_angle + turret_angle) * 0.05f32;
 
         let mut mesh = Mesh::with_texture(self.body_tex);
-        Self::add_tank_vertices(&mut mesh, rotation_body, position);
+        Self::add_tank_vertices(&mut mesh, color, rotation_body, position);
         painter.add(Shape::Mesh(mesh));
 
         let mut mesh = Mesh::with_texture(self.turret_tex);
-        Self::add_tank_vertices(&mut mesh, rotation_turret, position);
+        Self::add_tank_vertices(&mut mesh, color, rotation_turret, position);
         painter.add(Shape::Mesh(mesh));
     }
 
@@ -209,28 +218,28 @@ impl App {
         painter.add(line);
     }
 
-    fn add_tank_vertices(mesh: &mut Mesh, rot: Rot2, pos: Pos2) {
+    fn add_tank_vertices(mesh: &mut Mesh, color: Color32, rot: Rot2, pos: Pos2) {
         mesh.vertices.push(Vertex {
             pos: pos + (rot * vec2(-480f32, -205f32)),
             uv: egui::pos2(0f32, 0f32),
-            color: Color32::WHITE
+            color
         });
         mesh.vertices.push(Vertex {
             pos: pos + (rot * vec2(480f32, -205f32)),
             uv: egui::pos2(1f32, 0f32),
-            color: Color32::WHITE
+            color
         });
         mesh.vertices.push(Vertex {
             pos: pos + (rot * vec2(-480f32, 335f32)),
             uv: egui::pos2(0f32, 1f32),
-            color: Color32::WHITE
+            color
         });
         mesh.add_triangle(0, 1, 2);
 
         mesh.vertices.push(Vertex {
             pos: pos + (rot * vec2(480f32, 335f32)),
             uv: egui::pos2(1f32, 1f32),
-            color: Color32::WHITE
+            color
         });
         mesh.add_triangle(1, 2, 3);
     }
