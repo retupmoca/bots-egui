@@ -34,8 +34,8 @@ fn bots_main_loop(tx: SyncSender<WorldUpdate>, redraw: Arc<dyn epi::RepaintSigna
         ..WorldConfig::default()
     });
 
-    world.add_bot(Path::new("testbot.bc"));
-    world.add_bot(Path::new("testbot.bc"));
+    world.add_bot(Path::new("testbot.bin"));
+    world.add_bot(Path::new("testbot.bin"));
 
     world.place_bots();
 
